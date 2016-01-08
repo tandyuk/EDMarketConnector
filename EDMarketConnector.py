@@ -495,5 +495,6 @@ class AppWindow:
 # Run the app
 if __name__ == "__main__":
     root = tk.Tk()
+    root.wm_attributes("-topmost", 1)
     app = AppWindow(root)
     root.mainloop()
