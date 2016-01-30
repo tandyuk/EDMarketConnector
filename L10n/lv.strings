@@ -10,6 +10,9 @@
 /* Explorer rank. [stats.py] */
 "Aimless" = "Aimless";
 
+/* System menu entry on Windows. [EDMarketConnector.py] */
+"Always on top" = "Vienmēr virspusē";
+
 /* CQC rank. [stats.py] */
 "Amateur" = "Amateur";
 
@@ -18,6 +21,9 @@
 
 /* Output setting. [prefs.py] */
 "Automatically make a log entry on entering a system" = "Automātiski veikt ierakstu ierodoties sistēmā";
+
+/* [prefs.py] */
+"Automatically open uncharted systems’ EDSM pages" = "Automātiski atvērt neatklāto sistēmu EDSM lapas";
 
 /* Cmdr stats. [stats.py] */
 "Balance" = "Bilance";

@@ -11,9 +11,11 @@ from ttkHyperlinkLabel import HyperlinkLabel
 import myNotebook as nb
 
 from config import applongname, config
+from edproxy import edproxy
 from hotkey import hotkeymgr
 from monitor import monitor
 
+import plug
 
 if platform == 'darwin':
     import objc
@@ -126,10 +128,9 @@ class PreferencesDialog(tk.Toplevel):
         nb.Checkbutton(outframe, text=_('Ship loadout in Coriolis format file'), variable=self.out_ship_coriolis, command=self.outvarchanged).grid(columnspan=2, padx=BUTTONX, sticky=tk.W)
         self.out_log_file = tk.IntVar(value = (output & config.OUT_LOG_FILE) and 1)
         nb.Checkbutton(outframe, text=_('Flight log in CSV format file'), variable=self.out_log_file, command=self.outvarchanged).grid(columnspan=2, padx=BUTTONX, pady=(5,0), sticky=tk.W)
-        self.out_log_auto = tk.IntVar(value = monitor.logdir and (output & config.OUT_LOG_AUTO) and 1 or 0)
-        if monitor.logdir:
-            self.out_log_auto_button = nb.Checkbutton(outframe, text=_('Automatically make a log entry on entering a system'), variable=self.out_log_auto, command=self.outvarchanged)	# Output setting
-            self.out_log_auto_button.grid(columnspan=2, padx=BUTTONX, sticky=tk.W)
+        self.out_log_auto = tk.IntVar(value = output & config.OUT_LOG_AUTO and 1 or 0)
+        self.out_log_auto_button = nb.Checkbutton(outframe, text=_('Automatically make a log entry on entering a system'), variable=self.out_log_auto, command=self.outvarchanged)	# Output setting
+        self.out_log_auto_button.grid(columnspan=2, padx=BUTTONX, sticky=tk.W)
         self.out_log_auto_text = nb.Label(outframe, foreground='firebrick')
         self.out_log_auto_text.grid(columnspan=2, padx=(30,0), sticky=tk.W)
 
@@ -156,12 +157,11 @@ class PreferencesDialog(tk.Toplevel):
         ttk.Separator(edsmframe, orient=tk.HORIZONTAL).grid(columnspan=2, padx=PADX, pady=PADY, sticky=tk.EW)
         self.out_log_edsm = tk.IntVar(value = (output & config.OUT_LOG_EDSM) and 1)
         nb.Checkbutton(edsmframe, text=_('Send flight log to Elite Dangerous Star Map'), variable=self.out_log_edsm, command=self.outvarchanged).grid(columnspan=2, padx=BUTTONX, sticky=tk.W)
-        self.edsm_autoopen = tk.IntVar(value = (output & config.EDSM_AUTOOPEN) and 1)
-        self.edsm_autoopen_button = nb.Checkbutton(edsmframe, text=_("Automatically open uncharted systems' EDSM pages"), variable=self.edsm_autoopen)
+        self.edsm_autoopen = tk.BooleanVar(value = config.getint('edsm_autoopen'))
+        self.edsm_autoopen_button = nb.Checkbutton(edsmframe, text=_(u"Automatically open uncharted systems’ EDSM pages"), variable=self.edsm_autoopen)
         self.edsm_autoopen_button.grid(columnspan=2, padx=BUTTONX, sticky=tk.W)
-        if monitor.logdir:
-            self.edsm_log_auto_button = nb.Checkbutton(edsmframe, text=_('Automatically make a log entry on entering a system'), variable=self.out_log_auto, command=self.outvarchanged)	# Output setting
-            self.edsm_log_auto_button.grid(columnspan=2, padx=BUTTONX, sticky=tk.W)
+        self.edsm_log_auto_button = nb.Checkbutton(edsmframe, text=_('Automatically make a log entry on entering a system'), variable=self.out_log_auto, command=self.outvarchanged)	# Output setting
+        self.edsm_log_auto_button.grid(columnspan=2, padx=BUTTONX, sticky=tk.W)
         self.edsm_log_auto_text = nb.Label(edsmframe, foreground='firebrick')
         self.edsm_log_auto_text.grid(columnspan=2, padx=(30,0), sticky=tk.W)
 
@@ -217,6 +217,11 @@ class PreferencesDialog(tk.Toplevel):
                          _('Keyboard shortcut') or	# Tab heading in settings on OSX
                          _('Hotkey'))			# Tab heading in settings on Windows
 
+        # build plugin prefs tabs
+        for plugname in plug.PLUGINS:
+            plugframe = plug.get_plugin_pref(plugname, notebook)
+            if plugframe:
+                notebook.add(plugframe, text=plugname)
 
         if platform=='darwin':
             self.protocol("WM_DELETE_WINDOW", self.apply)	# close button applies changes
@@ -231,7 +236,7 @@ class PreferencesDialog(tk.Toplevel):
             self.protocol("WM_DELETE_WINDOW", self._destroy)
 
         # Selectively disable buttons depending on output settings
-        self.outvarchanged()
+        self.proxypoll()
 
         # disable hotkey for the duration
         hotkeymgr.unregister()
@@ -240,6 +245,12 @@ class PreferencesDialog(tk.Toplevel):
         self.wait_visibility()
         self.grab_set()
         #self.wait_window(self)	# causes duplicate events on OSX
+
+
+    def proxypoll(self):
+        self.outvarchanged()
+        self.after(1000, self.proxypoll)
+
 
     def outvarchanged(self):
         local = self.out_bpc.get() or self.out_td.get() or self.out_csv.get() or self.out_ship_eds.get() or self.out_ship_coriolis.get() or self.out_log_file.get()
@@ -255,26 +266,33 @@ class PreferencesDialog(tk.Toplevel):
         self.edsm_cmdr['state']         = edsm_state
         self.edsm_apikey['state']       = edsm_state
 
-        if monitor.logdir:
+        proxyaddr = edproxy.status()
+        self.out_log_auto_text['text'] = ''
+        self.edsm_log_auto_text['text'] = ''
+        if monitor.logdir or proxyaddr:
             log = self.out_log_file.get()
             self.out_log_auto_button['state']  = log and tk.NORMAL or tk.DISABLED
 
-            self.out_log_auto_text['text'] = ''
             if log and self.out_log_auto.get():
-                if not monitor.enable_logging():
+                if proxyaddr:
+                    self.out_log_auto_text['text'] = _('Connected to {EDPROXY} at {ADDR}').format(EDPROXY = 'edproxy', ADDR = proxyaddr)	# Output settings
+                elif not monitor.enable_logging():
                     self.out_log_auto_text['text'] = "Can't enable automatic logging!"	# Shouldn't happen - don't translate
                 elif monitor.restart_required():
                     self.out_log_auto_text['text'] = _('Re-start Elite: Dangerous to use this feature')	# Output settings prompt
 
             self.edsm_log_auto_button['state']  = edsm_state
 
-            self.edsm_log_auto_text['text'] = ''
             if self.out_log_edsm.get() and self.out_log_auto.get():
-                if not monitor.enable_logging():
+                if proxyaddr:
+                    self.edsm_log_auto_text['text'] = _('Connected to {EDPROXY} at {ADDR}').format(EDPROXY = 'edproxy', ADDR = proxyaddr)	# Output settings
+                elif not monitor.enable_logging():
                     self.edsm_log_auto_text['text'] = "Can't enable automatic logging!"	# Shouldn't happen - don't translate
                 elif monitor.restart_required():
                     self.edsm_log_auto_text['text'] = _('Re-start Elite: Dangerous to use this feature')	# Output settings prompt
-
+        else:
+            self.out_log_auto_button['state'] = tk.DISABLED
+            self.edsm_log_auto_button['state'] = tk.DISABLED
 
     def outbrowse(self):
         if platform != 'win32':
@@ -365,10 +383,10 @@ class PreferencesDialog(tk.Toplevel):
                    (self.out_log_file.get() and config.OUT_LOG_FILE) +
                    (self.out_ship_coriolis.get() and config.OUT_SHIP_CORIOLIS) +
                    (self.out_log_edsm.get() and config.OUT_LOG_EDSM) +
-                   (self.out_log_auto.get() and config.OUT_LOG_AUTO) +
-                   (self.edsm_autoopen.get() and config.EDSM_AUTOOPEN))
+                   (self.out_log_auto.get() and config.OUT_LOG_AUTO))
         config.set('outdir', self.outdir.get().startswith('~') and join(config.home, self.outdir.get()[2:]) or self.outdir.get())
 
+        config.set('edsm_autoopen', self.edsm_autoopen.get())
         config.set('edsm_cmdrname', self.edsm_cmdr.get().strip())
         config.set('edsm_apikey',   self.edsm_apikey.get().strip())
 
@@ -387,11 +405,13 @@ class PreferencesDialog(tk.Toplevel):
     def _destroy(self):
         # Re-enable hotkey and log monitoring before exit
         hotkeymgr.register(self.parent, config.getint('hotkey_code'), config.getint('hotkey_mods'))
-        if (config.getint('output') & config.OUT_LOG_AUTO) and (config.getint('output') & (config.OUT_LOG_AUTO|config.OUT_LOG_EDSM)):
+        if (config.getint('output') & config.OUT_LOG_AUTO) and (config.getint('output') & (config.OUT_LOG_FILE|config.OUT_LOG_EDSM)):
             monitor.enable_logging()
             monitor.start(self.parent)
+            edproxy.start(self.parent)
         else:
             monitor.stop()
+            edproxy.stop()
         self.destroy()
 
     if platform == 'darwin':

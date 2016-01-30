@@ -1,13 +1,13 @@
 import sys
-from os import getenv, makedirs, mkdir
-from os.path import expanduser, dirname, isdir, join
+from os import getenv, makedirs, mkdir, pardir
+from os.path import expanduser, dirname, isdir, join, normpath
 from sys import platform
 
 
 appname = 'EDMarketConnector'
 applongname = 'E:D Market Connector'
 appcmdname = 'EDMC'
-appversion = '2.0.4.0'
+appversion = '2.0.6.0'
 
 update_feed = 'http://marginal.org.uk/edmarketconnector.xml'
 update_interval = 47*60*60
@@ -80,7 +80,6 @@ class Config:
     OUT_SHIP_CORIOLIS = 128
     OUT_LOG_EDSM = 256
     OUT_LOG_AUTO = 512
-    EDSM_AUTOOPEN = 1024
 
     if platform=='darwin':
 
@@ -89,7 +88,13 @@ class Config:
             if not isdir(self.app_dir):
                 mkdir(self.app_dir)
 
+            self.plugin_dir = join(self.app_dir, 'plugins')
+            if not isdir(self.plugin_dir):
+                mkdir(self.plugin_dir)
+
             self.home = expanduser('~')
+
+            self.respath = getattr(sys, 'frozen', False) and normpath(join(dirname(sys.executable), pardir, 'Resources')) or dirname(__file__)
 
             if not getattr(sys, 'frozen', False):
                 # Don't use Python's settings if interactive
@@ -116,9 +121,12 @@ class Config:
         def set(self, key, val):
             self.settings[key] = val
 
-        def close(self):
+        def save(self):
             self.defaults.setPersistentDomain_forName_(self.settings, self.bundle)
             self.defaults.synchronize()
+
+        def close(self):
+            self.save()
             self.defaults = None
 
     elif platform=='win32':
@@ -131,9 +139,15 @@ class Config:
             if not isdir(self.app_dir):
                 mkdir(self.app_dir)
             
+            self.plugin_dir = join(self.app_dir, 'plugins')
+            if not isdir(self.plugin_dir):
+                mkdir(self.plugin_dir)
+
             # expanduser in Python 2 on Windows doesn't handle non-ASCII - http://bugs.python.org/issue13207
             ctypes.windll.shell32.SHGetSpecialFolderPathW(0, buf, CSIDL_PROFILE, 0)
             self.home = buf.value
+
+            self.respath = dirname(getattr(sys, 'frozen', False) and sys.executable or __file__)
 
             self.hkey = HKEY()
             disposition = DWORD()
@@ -193,6 +207,9 @@ class Config:
             else:
                 raise NotImplementedError()
 
+        def save(self):
+            pass	# Redundant since registry keys are written immediately
+
         def close(self):
             RegCloseKey(self.hkey)
             self.hkey = None
@@ -206,7 +223,13 @@ class Config:
             if not isdir(self.app_dir):
                 makedirs(self.app_dir)
 
+            self.plugin_dir = join(self.app_dir, 'plugins')
+            if not isdir(self.plugin_dir):
+                mkdir(self.plugin_dir)
+
             self.home = expanduser('~')
+
+            self.respath = dirname(__file__)
 
             self.filename = join(getenv('XDG_CONFIG_HOME', expanduser('~/.config')), appname, '%s.ini' % appname)
             if not isdir(dirname(self.filename)):
@@ -236,10 +259,13 @@ class Config:
             except:
                 return 0
 
-        def close(self):
+        def save(self):
             h = codecs.open(self.filename, 'w', 'utf-8')
             h.write(unicode(self.config.data))
             h.close()
+
+        def close(self):
+            self.save()
             self.config = None
 
     else:	# ???

@@ -10,6 +10,9 @@
 /* Explorer rank. [stats.py] */
 "Aimless" = "Бесцельный";
 
+/* System menu entry on Windows. [EDMarketConnector.py] */
+"Always on top" = "Поверх остальных окон";
+
 /* CQC rank. [stats.py] */
 "Amateur" = "Любитель";
 
@@ -18,6 +21,9 @@
 
 /* Output setting. [prefs.py] */
 "Automatically make a log entry on entering a system" = "Автоматически заносить в журнал полета каждую посещённую систему";
+
+/* [prefs.py] */
+"Automatically open uncharted systems’ EDSM pages" = "Автоматически открывать EDSM для неисследованных систем";
 
 /* Cmdr stats. [stats.py] */
 "Balance" = "Баланс";

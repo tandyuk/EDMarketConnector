@@ -10,6 +10,9 @@
 /* Explorer rank. [stats.py] */
 "Aimless" = "Vagabond";
 
+/* System menu entry on Windows. [EDMarketConnector.py] */
+"Always on top" = "Toujours visible";
+
 /* CQC rank. [stats.py] */
 "Amateur" = "Amateur";
 
@@ -18,6 +21,9 @@
 
 /* Output setting. [prefs.py] */
 "Automatically make a log entry on entering a system" = "Ajouter automatiquement une entrée au journal en entrant dans un système";
+
+/* [prefs.py] */
+"Automatically open uncharted systems’ EDSM pages" = "Ouvrir automatiquement les pages EDSM des systèmes inexplorés";
 
 /* Cmdr stats. [stats.py] */
 "Balance" = "Solde";

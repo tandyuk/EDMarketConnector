@@ -5,7 +5,8 @@ This app downloads commodity market and other station data from the game [Elite:
 
 * sends the data to the [Elite Dangerous Data Network](http://eddn-gateway.elite-markets.net/) (“EDDN”) from where you and others can use it via online trading tools such as [eddb](http://eddb.io/), [Elite Trade Net](http://etn.io/), [Inara](http://inara.cz), [ED-TD](http://ed-td.space/), [Roguey's](http://roguey.co.uk/elite-dangerous/), etc.
 * saves the data to files on your computer that you can load into trading tools such as [Slopey's BPC Market Tool](https://forums.frontier.co.uk/showthread.php?t=76081), [Trade Dangerous](https://bitbucket.org/kfsone/tradedangerous/wiki/Home), [Thrudd's Trading Tools](http://www.elitetradingtool.co.uk/), [Inara](http://inara.cz), [mEDI's Elite Tools](https://github.com/mEDI-S/mEDI_s-Elite-Tools), etc.
-* saves a record of your ship loadout and/or flight log.
+* saves a record of your ship loadout to files on your computer that you can load into [E:D&nbsp;Shipyard](http://www.edshipyard.com), [Coriolis](http://coriolis.io) or [Elite Trade Net](http://etn.io/).
+* saves your flight log to a file on your computer and/or sends it to [Elite:&nbsp;Dangerous Star Map](http://www.edsm.net/). 
 
 Usage
 --------
@@ -61,13 +62,18 @@ This app can save a variety of data in a variety of formats:
   * CSV format file - saves commodity market data as files that you can upload to [Thrudd's Trading Tools](http://www.elitetradingtool.co.uk/), [Inara](http://inara.cz) or [mEDI's Elite Tools](https://github.com/mEDI-S/mEDI_s-Elite-Tools).
 
 * Ship loadout
-  * After every outfitting change saves a record of your ship loadout as a file that you can open in a text editor and that you can import into [E:D Shipyard](http://www.edshipyard.com) or [Coriolis](http://coriolis.io).
+  * After every outfitting change saves a record of your ship loadout as a file that you can open in a text editor and that you can import into [E:D&nbsp;Shipyard](http://www.edshipyard.com), [Coriolis](http://coriolis.io) or [Elite Trade Net](http://etn.io/).
 
 * Flight log
-  * Elite Dangerous Star Map - sends a record of your location to “[EDSM](http://www.edsm.net/)” where you can view your logs under My&nbsp;account &rarr; Exploration&nbsp;Logs, and optionally add private comments about a system.
   * CSV format file - adds a record of your location, ship and cargo to a file that you can open in a text editor or a spreadsheet program such as Excel. Note: Don't edit, rename or move this file - take a copy if you wish to change it.
 
 By default these files will be placed in your Documents folder. Since this app will create a lot of files if you use it for a while you may wish to create a separate folder for the files and tell the app to place them there.
+
+EDSM
+--------
+You can send a record of your location to [Elite: Dangerous Star Map](http://www.edsm.net/) where you can view your flight log under My&nbsp;account &rarr; Exploration&nbsp;Logs and optionally add private comments about a system. You will need to register for an account and follow the “[Elite Dangerous Star Map credentials](http://www.edsm.net/settings/api)” link to obtain your API key.
+
+If you select “Automatically make a log entry on entering a system” EDMC will pick up system changes from either Elite: Dangerous' log files or from [edproxy](https://bitbucket.org/westokyo/edproxy/) if it's running on the same subnet and if your router allows Multicast packets.
 
 
 Uninstall
@@ -82,6 +88,19 @@ Windows:
 * Uninstall **Elite Dangerous Market Connector** from Control Panel → Programs.
 
 Note: Uninstalling the app does not delete any output files that it has previously written.
+
+
+Plugins
+--------
+Plugins extend the behavior of this app. To install a downloaded plugin, open the `.zip` archive and move the folder contained inside into the following folder:
+
+* Windows: `%LOCALAPPDATA%\EDMarketConnector\plugins` (usually `C:\Users\you\AppData\Local\EDMarketConnector\plugins`).
+* Mac: `~/Library/Application Support/EDMarketConnector/plugins` (in Finder hold ⌥ and choose Go &rarr; Library to open your `~/Library` folder).
+* Linux: `$XDG_DATA_HOME/EDMarketConnector/plugins`, or `~/.local/share/EDMarketConnector/plugins` if `$XDG_DATA_HOME` is unset.
+
+You will need to re-start EDMC for it to notice the new plugin.
+
+Refer to [PLUGINS.md](PLUGINS.md) if you would like to write a plugin.
 
 
 Troubleshooting
@@ -190,12 +209,13 @@ Windows:
 
 Disclaimer
 --------
-This app uses the “Companion” web API that Frontier supplies to support their Elite Dangerous iOS app. This API isn't officially supported for third-party use, so could go away at some time in the future - in which case this app will cease to work.
+This app uses the “Companion” web API that Frontier originally supplied for their Elite Dangerous iOS app and now [support](https://forums.frontier.co.uk/showthread.php?t=218658&p=3371472#post3371472) for third-party apps. However this API could go away at some time in the future - in which case this app will cease to work.
 
 
 Acknowledgements
 --------
 * “Elite: Dangerous” is © 1984 - 2015 Frontier Developments plc.
+* Thanks to Cmdrs CatfoodCZ, Mike Stix & DaraCZ for the Czech translation.
 * Thanks to Cmdr CoolBreeze for the Dutch translation.
 * Thanks to [Cmdr Anthor](http://ed-td.space/) for the French translation.
 * Thanks to [Cmdr Koreldan](http://ed-map.eu/) for the Italian translation.

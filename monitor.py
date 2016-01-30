@@ -4,6 +4,7 @@ import threading
 from os import listdir, pardir, rename, unlink
 from os.path import basename, exists, isdir, isfile, join
 from platform import machine
+import sys
 from sys import platform
 from time import strptime, localtime, mktime, sleep, time
 from datetime import datetime
@@ -78,20 +79,10 @@ class EDLogs(FileSystemEventHandler):
         self.logfile = None
         self.logging_enabled = self._logging_enabled
         self._restart_required = False
+        self.observer = None
         self.thread = None
+        self.callback = None
         self.last_event = None	# for communicating the Jump event
-
-        if self.logdir:
-            # Set up a watchog observer. This is low overhead so is left running irrespective of whether monitoring is desired.
-            observer = Observer()
-            observer.daemon = True
-            observer.schedule(self, self.logdir)
-            observer.start()
-            atexit.register(observer.stop)
-
-            # Latest pre-existing logfile - e.g. if E:D is already running. Assumes logs sort alphabetically.
-            logfiles = sorted([x for x in listdir(self.logdir) if x.startswith('netLog.')])
-            self.logfile = logfiles and join(self.logdir, logfiles[-1]) or None
 
     def enable_logging(self):
         if self.logging_enabled():
@@ -153,6 +144,9 @@ class EDLogs(FileSystemEventHandler):
             if __debug__: print_exc()
             return False
 
+    def set_callback(self, callback):
+        self.callback = callback
+
     def start(self, root):
         self.root = root
         if not self.logdir:
@@ -160,6 +154,27 @@ class EDLogs(FileSystemEventHandler):
             return False
         if self.running():
             return True
+
+        self.root.bind_all('<<MonitorJump>>', self.jump)	# user-generated
+
+        # Set up a watchog observer. This is low overhead so is left running irrespective of whether monitoring is desired.
+        if not self.observer:
+            if __debug__:
+                print 'Monitoring "%s"' % self.logdir
+            elif getattr(sys, 'frozen', False):
+                sys.stderr.write('Monitoring "%s"\n' % self.logdir)
+                sys.stderr.flush()	# Required for line to show up immediately on Windows
+
+            self.observer = Observer()
+            self.observer.daemon = True
+            self.observer.schedule(self, self.logdir)
+            self.observer.start()
+            atexit.register(self.observer.stop)
+
+            # Latest pre-existing logfile - e.g. if E:D is already running. Assumes logs sort alphabetically.
+            logfiles = sorted([x for x in listdir(self.logdir) if x.startswith('netLog.')])
+            self.logfile = logfiles and join(self.logdir, logfiles[-1]) or None
+
         self.thread = threading.Thread(target = self.worker, name = 'netLog worker')
         self.thread.daemon = True
         self.thread.start()
@@ -180,7 +195,7 @@ class EDLogs(FileSystemEventHandler):
     def worker(self):
         # e.g. "{18:11:44} System:22(Gamma Doradus) Body:3 Pos:(3.69928e+07,1.13173e+09,-1.75892e+08) \r\n" or "... NormalFlight\r\n" or "... Supercruise\r\n"
         # Note that system name may contain parantheses, e.g. "Pipe (stem) Sector PI-T c3-5".
-        regexp = re.compile(r'\{(.+)\} System:\d+\((.+)\) Body:')
+        regexp = re.compile(r'\{(.+)\} System:\d+\((.+)\) Body:(\d+) .* (\S*)')	# (localtime, system, body, context)
 
         # Seek to the end of the latest log file
         logfile = self.logfile
@@ -206,7 +221,7 @@ class EDLogs(FileSystemEventHandler):
                 for line in loghandle:
                     match = regexp.match(line)
                     if match:
-                        system, visited = match.group(2), match.group(1)
+                        system, visited = match.group(4) == 'ProvingGround' and 'CQC' or match.group(2), match.group(1)
 
                 if system:
                     self._restart_required = False	# clearly logging is working
@@ -219,7 +234,7 @@ class EDLogs(FileSystemEventHandler):
                     time_struct = datetime(now.tm_year, now.tm_mon, now.tm_mday, visited_struct.tm_hour, visited_struct.tm_min, visited_struct.tm_sec).timetuple()	# still local time
                     # Tk on Windows doesn't like to be called outside of an event handler, so generate an event
                     self.last_event = (mktime(time_struct), system)
-                    self.root.event_generate('<<Jump>>', when="tail")
+                    self.root.event_generate('<<MonitorJump>>', when="tail")
 
             sleep(10)	# New system gets posted to log file before hyperspace ends, so don't need to poll too often
 
@@ -227,6 +242,10 @@ class EDLogs(FileSystemEventHandler):
             if threading.current_thread() != self.thread:
                 return	# Terminate
 
+    def jump(self, event):
+        # Called from Tkinter's main loop
+        if self.callback and self.last_event:
+            self.callback(*self.last_event)
 
     if platform=='darwin':
 
@@ -267,14 +286,15 @@ class EDLogs(FileSystemEventHandler):
                 if not RegQueryValueEx(key, 'SteamPath', 0, ctypes.byref(valtype), None, ctypes.byref(valsize)) and valtype.value == REG_SZ:
                     buf = ctypes.create_unicode_buffer(valsize.value / 2)
                     if not RegQueryValueEx(key, 'SteamPath', 0, ctypes.byref(valtype), buf, ctypes.byref(valsize)):
-                        steamlibs = [buf.value]
+                        steampath = buf.value.replace('/', '\\')	# For some reason uses POSIX seperators
+                        steamlibs = [steampath]
                         try:
                             # Simple-minded Valve VDF parser
-                            with open(join(buf.value, 'config', 'config.vdf'), 'rU') as h:
+                            with open(join(steampath, 'config', 'config.vdf'), 'rU') as h:
                                 for line in h:
                                     vals = line.split()
                                     if vals and vals[0].startswith('"BaseInstallFolder_'):
-                                        steamlibs.append(vals[1].strip('"'))
+                                        steamlibs.append(vals[1].strip('"').replace('\\\\', '\\'))
                         except:
                             pass
                         for lib in steamlibs:

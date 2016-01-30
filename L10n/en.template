@@ -10,6 +10,9 @@
 /* Explorer rank. [stats.py] */
 "Aimless" = "Aimless";
 
+/* System menu entry on Windows. [EDMarketConnector.py] */
+"Always on top" = "Always on top";
+
 /* CQC rank. [stats.py] */
 "Amateur" = "Amateur";
 
@@ -20,7 +23,7 @@
 "Automatically make a log entry on entering a system" = "Automatically make a log entry on entering a system";
 
 /* [prefs.py] */
-"Automatically open uncharted systems' EDSM pages" = "Automatically open uncharted systems' EDSM pages";
+"Automatically open uncharted systems’ EDSM pages" = "Automatically open uncharted systems’ EDSM pages";
 
 /* Cmdr stats. [stats.py] */
 "Balance" = "Balance";
@@ -60,6 +63,9 @@
 
 /* Combat rank. [stats.py] */
 "Competent" = "Competent";
+
+/* Output settings. [prefs.py] */
+"Connected to {EDPROXY} at {ADDR}" = "Connected to {EDPROXY} at {ADDR}";
 
 /* Update button in main window. [EDMarketConnector.py] */
 "cooldown {SS}s" = "cooldown {SS}s";
@@ -129,6 +135,9 @@
 
 /* [companion.py] */
 "Error: Server is down" = "Error: Server is down";
+
+/* [companion.py] */
+"Error: Verification failed" = "Error: Verification failed";
 
 /* Item in the File menu on Windows. [EDMarketConnector.py] */
 "Exit" = "Exit";

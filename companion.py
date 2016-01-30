@@ -133,7 +133,11 @@ class CredentialsError(Exception):
         return unicode(self).encode('utf-8')
 
 class VerificationRequired(Exception):
-    pass
+    def __unicode__(self):
+        return _('Error: Verification failed')
+    def __str__(self):
+        return unicode(self).encode('utf-8')
+
 
 # Server companion.orerve.net uses a session cookie ("CompanionApp") to tie together login, verification
 # and query. So route all requests through a single Session object which holds this state.
@@ -184,10 +188,10 @@ class Session:
         if 'server error' in r.text:
             self.dump(r)
             raise ServerError()
-        elif 'Password' in r.text:
+        elif r.url == URL_LOGIN:	# would have redirected away if success
             self.dump(r)
             raise CredentialsError()
-        elif 'Verification Code' in r.text:
+        elif r.url == URL_CONFIRM:	# redirected to verification page
             self.state = Session.STATE_AUTH
             raise VerificationRequired()
         else:
@@ -199,11 +203,10 @@ class Session:
             raise VerificationRequired()
         r = self.session.post(URL_CONFIRM, data = {'code' : code}, timeout=timeout)
         r.raise_for_status()
-        # verification doesn't actually return a yes/no, so log in again to determine state
-        try:
-            self.login()
-        except:
-            pass
+        if r.url == URL_CONFIRM:	# would have redirected away if success
+            raise VerificationRequired()
+        self.save()	# Save cookies now for use by command-line app
+        self.login()
 
     def query(self):
         if self.state == Session.STATE_NONE:
@@ -220,7 +223,7 @@ class Session:
 
         if r.status_code != requests.codes.ok:
             self.dump(r)
-        if r.status_code == requests.codes.forbidden or (r.history and r.url == URL_LOGIN):
+        if r.status_code == requests.codes.forbidden or r.url == URL_LOGIN:
             # Start again - maybe our session cookie expired?
             self.login()
             return self.query()
@@ -233,6 +236,9 @@ class Session:
             raise ServerError()
 
         return data
+
+    def save(self):
+        self.session.cookies.save()
 
     def close(self):
         self.state = Session.STATE_NONE

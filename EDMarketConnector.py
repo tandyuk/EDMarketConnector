@@ -39,6 +39,8 @@ import flightlog
 import eddb
 import stats
 import prefs
+import plug
+from edproxy import edproxy
 from hotkey import hotkeymgr
 from monitor import monitor
 
@@ -63,6 +65,8 @@ class AppWindow:
         self.w.rowconfigure(0, weight=1)
         self.w.columnconfigure(0, weight=1)
 
+        plug.load_plugins()
+
         if platform == 'win32':
             self.w.wm_iconbitmap(default='EDMarketConnector.ico')
         elif platform == 'linux2':
@@ -85,7 +89,6 @@ class AppWindow:
         frame = ttk.Frame(self.w, name=appname.lower())
         frame.grid(sticky=tk.NSEW)
         frame.columnconfigure(1, weight=1)
-        frame.rowconfigure(4, weight=1)
 
         ttk.Label(frame, text=_('Cmdr')+':').grid(row=0, column=0, sticky=tk.W)	# Main window
         ttk.Label(frame, text=_('System')+':').grid(row=1, column=0, sticky=tk.W)	# Main window
@@ -94,16 +97,23 @@ class AppWindow:
         self.cmdr = ttk.Label(frame, width=-21)
         self.system =  HyperlinkLabel(frame, compound=tk.RIGHT, url = self.system_url, popup_copy = True)
         self.station = HyperlinkLabel(frame, url = self.station_url, popup_copy = lambda x: x!=self.STATION_UNDOCKED)
-        self.button = ttk.Button(frame, name='update', text=_('Update'), command=self.getandsend, default=tk.ACTIVE, state=tk.DISABLED)	# Update button in main window
-        self.status = ttk.Label(frame, name='status', width=-25)
-        self.w.bind('<Return>', self.getandsend)
-        self.w.bind('<KP_Enter>', self.getandsend)
 
         self.cmdr.grid(row=0, column=1, sticky=tk.EW)
         self.system.grid(row=1, column=1, sticky=tk.EW)
         self.station.grid(row=2, column=1, sticky=tk.EW)
-        self.button.grid(row=3, column=0, columnspan=2, sticky=tk.NSEW)
-        self.status.grid(row=4, column=0, columnspan=2, sticky=tk.EW)
+
+        for plugname in plug.PLUGINS:
+            appitem = plug.get_plugin_app(plugname, frame)
+            if appitem:
+                appitem.grid(columnspan=2, sticky=tk.W)
+
+        self.button = ttk.Button(frame, name='update', text=_('Update'), command=self.getandsend, default=tk.ACTIVE, state=tk.DISABLED)	# Update button in main window
+        self.status = ttk.Label(frame, name='status', width=-25)
+        self.button.grid(columnspan=2, sticky=tk.NSEW)
+        self.status.grid(columnspan=2, sticky=tk.EW)
+
+        self.w.bind('<Return>', self.getandsend)
+        self.w.bind('<KP_Enter>', self.getandsend)
 
         for child in frame.winfo_children():
             child.grid_configure(padx=5, pady=(platform=='darwin' and 3 or 2))
@@ -143,8 +153,16 @@ class AppWindow:
             self.edit_menu = tk.Menu(menubar, tearoff=tk.FALSE)
             self.edit_menu.add_command(label=_('Copy'), accelerator='Ctrl+C', state=tk.DISABLED, command=self.copy)	# As in Copy and Paste
             menubar.add_cascade(label=_('Edit'), menu=self.edit_menu)	# Menu title
+            if platform == 'win32':
+                self.always_ontop = tk.BooleanVar(value = config.getint('always_ontop'))
+                system_menu = tk.Menu(menubar, name='system', tearoff=tk.FALSE)
+                system_menu.add_separator()
+                system_menu.add_checkbutton(label=_('Always on top'), variable = self.always_ontop, command=self.ontop_changed)	# System menu entry on Windows
+                menubar.add_cascade(menu=system_menu)
+                self.w.wm_attributes('-topmost', self.always_ontop.get())
             self.w.bind('<Control-c>', self.copy)
             self.w.protocol("WM_DELETE_WINDOW", self.onexit)
+
         if platform == 'linux2':
             # Fix up menu to use same styling as everything else
             (fg, bg, afg, abg) = (style.lookup('TLabel.label', 'foreground'),
@@ -178,10 +196,12 @@ class AppWindow:
         hotkeymgr.register(self.w, config.getint('hotkey_code'), config.getint('hotkey_mods'))
 
         # Install log monitoring
-        self.w.bind_all('<<Jump>>', self.system_change)	# user-generated
-        if (config.getint('output') & config.OUT_LOG_AUTO) and (config.getint('output') & (config.OUT_LOG_AUTO|config.OUT_LOG_EDSM)):
+        monitor.set_callback(self.system_change)
+        edproxy.set_callback(self.system_change)
+        if (config.getint('output') & config.OUT_LOG_AUTO) and (config.getint('output') & (config.OUT_LOG_FILE|config.OUT_LOG_EDSM)):
             monitor.enable_logging()
             monitor.start(self.w)
+            edproxy.start(self.w)
 
         # First run
         if not config.get('username') or not config.get('password'):
@@ -227,6 +247,7 @@ class AppWindow:
     def verify(self, code):
         try:
             self.session.verify(code)
+            config.save()	# Save settings now for use by command-line app
         except Exception as e:
             if __debug__: print_exc()
             self.button['state'] = tk.NORMAL
@@ -267,6 +288,7 @@ class AppWindow:
                 self.status['text'] = _("What are you flying?!")	# Shouldn't happen
 
             else:
+
                 if __debug__:	# Recording
                     with open('%s%s.%s.json' % (data['lastSystem']['name'], data['commander'].get('docked') and '.'+data['lastStarport']['name'] or '', strftime('%Y-%m-%dT%H.%M.%S', localtime())), 'wt') as h:
                         h.write(json.dumps(data, ensure_ascii=False, indent=2, sort_keys=True).encode('utf-8'))
@@ -278,7 +300,12 @@ class AppWindow:
                 self.edit_menu.entryconfigure(_('Copy'), state=tk.NORMAL)
                 self.view_menu.entryconfigure(_('Status'), state=tk.NORMAL)
 
+                if data['lastStarport'].get('commodities'):
+                    # Fixup anomalies in the commodity data
+                    self.session.fixup(data['lastStarport']['commodities'])
+
                 # stuff we can do when not docked
+                plug.notify_newdata(data)
                 if config.getint('output') & config.OUT_SHIP_EDS:
                     loadout.export(data)
                 if config.getint('output') & config.OUT_SHIP_CORIOLIS:
@@ -335,9 +362,6 @@ class AppWindow:
 
                     else:
                         if data['lastStarport'].get('commodities'):
-                            # Fixup anomalies in the commodity data
-                            self.session.fixup(data['lastStarport']['commodities'])
-
                             if config.getint('output') & config.OUT_CSV:
                                 bpc.export(data, True)
                             if config.getint('output') & config.OUT_TD:
@@ -416,18 +440,16 @@ class AppWindow:
         except:
             pass
 
-    def system_change(self, event):
-
-        if not monitor.last_event:
-            if __debug__: print 'spurious system_change', event	# eh?
-            return
-
-        timestamp, system = monitor.last_event	# would like to use event user_data to carry this, but not accessible in Tkinter
+    def system_change(self, timestamp, system):
 
         if self.system['text'] != system:
             self.system['text'] = system
+
             self.system['image'] = ''
             self.station['text'] = EDDB.system(system) and self.STATION_UNDOCKED or ''
+
+            plug.notify_system_changed(timestamp, system)
+
             if config.getint('output') & config.OUT_LOG_FILE:
                 flightlog.writelog(timestamp, system)
             if config.getint('output') & config.OUT_LOG_EDSM:
@@ -450,7 +472,7 @@ class AppWindow:
         result = self.edsm.result
         if result['done']:
             self.system['image'] = result['img']
-            if result['uncharted'] and (config.getint('output') & config.EDSM_AUTOOPEN):
+            if result['uncharted'] and config.getint('edsm_autoopen'):
                 webbrowser.open(result['url'])
         else:
             self.w.after(int(EDSM_POLL * 1000), self.edsmpoll)
@@ -478,6 +500,10 @@ class AppWindow:
             self.button['text'] = _('Update')	# Update button in main window
             self.button['state'] = tk.NORMAL
 
+    def ontop_changed(self, event=None):
+        config.set('always_ontop', self.always_ontop.get())
+        self.w.wm_attributes('-topmost', self.always_ontop.get())
+
     def copy(self, event=None):
         if self.system['text']:
             self.w.clipboard_clear()
@@ -489,6 +515,7 @@ class AppWindow:
         if platform!='darwin' or self.w.winfo_rooty()>0:	# http://core.tcl.tk/tk/tktview/c84f660833546b1b84e7
             config.set('geometry', '+{1}+{2}'.format(*self.w.geometry().split('+')))
         config.close()
+        self.updater.close()
         self.session.close()
         self.w.destroy()
 

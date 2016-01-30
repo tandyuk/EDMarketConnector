@@ -17,8 +17,8 @@
 				 Description="$(var.PRODUCTLONGNAME) installer"
 				 InstallerVersion="300" Compressed="yes"
 				 Platform="x86"
-				 Languages="1033,1031,1034,1036,1040,1043,1045,1049,1058,1060,1062,0" />
-				 <!--        en   de   es   fr   it   nl   pl   ru   uk   sl   lv  neutral -->
+				 Languages="1033,1029,1031,1034,1036,1040,1043,1045,1049,1058,1060,1062,0" />
+				 <!--        en   cs,  de   es   fr   it   nl   pl   ru   uk   sl   lv  neutral -->
 				 <!-- https://msdn.microsoft.com/en-gb/goglobal/bb964664.aspx -->
 
 		<!-- Always reinstall since patching is problematic -->
@@ -81,6 +81,9 @@
 						<File KeyPath="yes" Source="SourceDir\cacert.pem" />
 					</Component>
 					<Component Guid="*">
+						<File KeyPath="yes" Source="SourceDir\cs.strings" />
+					</Component>
+					<Component Guid="*">
 						<File KeyPath="yes" Source="SourceDir\de.strings" />
 					</Component>
 					<Component Guid="{6762E871-5FA1-4C2F-A3C9-6A9954CC018C}">
@@ -108,6 +111,9 @@
 						<File KeyPath="yes" Source="SourceDir\lv.strings" />
 					</Component>
 					<Component Guid="*">
+						<File KeyPath="yes" Source="SourceDir\modules.p" />
+					</Component>
+					<Component Guid="*">
 						<File KeyPath="yes" Source="SourceDir\nl.strings" />
 					</Component>
 					<Component Guid="*">
@@ -124,6 +130,9 @@
 					</Component>
 					<Component Guid="{9DBAB544-E815-40A5-866A-391B68919344}">
 						<File KeyPath="yes" Source="SourceDir\select.pyd" />
+					</Component>
+					<Component Guid="*">
+						<File KeyPath="yes" Source="SourceDir\ships.p" />
 					</Component>
 					<Component Guid="*">
 						<File KeyPath="yes" Source="SourceDir\sl.strings" />
@@ -383,6 +392,7 @@
 			<ComponentRef Id="_tkinter.pyd" />
 			<ComponentRef Id="bz2.pyd" />
 			<ComponentRef Id="cacert.pem" />
+			<ComponentRef Id="cs.strings" />
 			<ComponentRef Id="de.strings" />
 			<ComponentRef Id="EDMarketConnector.ico" />
 			<ComponentRef Id="EDMarketConnector.VisualElementsManifest.xml" />
@@ -392,12 +402,14 @@
 			<ComponentRef Id="it.strings" />
 			<ComponentRef Id="library.zip" />
 			<ComponentRef Id="lv.strings" />
+			<ComponentRef Id="modules.p" />
 			<ComponentRef Id="nl.strings" />
 			<ComponentRef Id="pl.strings" />
 			<ComponentRef Id="pyexpat.pyd" />
 			<ComponentRef Id="python27.dll" />
 			<ComponentRef Id="ru.strings" />
 			<ComponentRef Id="select.pyd" />
+			<ComponentRef Id="ships.p" />
 			<ComponentRef Id="sl.strings" />
 			<ComponentRef Id="snd_good.wav" />
 			<ComponentRef Id="snd_bad.wav" />

@@ -10,6 +10,9 @@
 /* Explorer rank. [stats.py] */
 "Aimless" = "Perdido";
 
+/* System menu entry on Windows. [EDMarketConnector.py] */
+"Always on top" = "Siempre visible";
+
 /* CQC rank. [stats.py] */
 "Amateur" = "Aficionado";
 
@@ -18,6 +21,9 @@
 
 /* Output setting. [prefs.py] */
 "Automatically make a log entry on entering a system" = "Crear automáticamente una entrada en el registro al entrar en un sistema";
+
+/* [prefs.py] */
+"Automatically open uncharted systems’ EDSM pages" = "Abrir automáticamente sistemas no cartografiados en EDSM";
 
 /* Cmdr stats. [stats.py] */
 "Balance" = "Saldo";
@@ -126,6 +132,9 @@
 
 /* [companion.py] */
 "Error: Server is down" = "Error: El Servidor está caído";
+
+/* [companion.py] */
+"Error: Verification failed" = "Error: Verificación fallida";
 
 /* Item in the File menu on Windows. [EDMarketConnector.py] */
 "Exit" = "Salir";

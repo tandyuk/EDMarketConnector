@@ -1,3 +1,5 @@
+import cPickle
+from os.path import join
 import time
 
 import companion
@@ -209,6 +211,10 @@ internal_map = {
 }
 
 
+# Module mass, FSD data etc
+moduledata = cPickle.load(open(join(config.respath, 'modules.p'),  'rb'))
+
+
 # Given a module description from the Companion API returns a description of the module in the form of a
 # dict { category, name, [mount], [guidance], [ship], rating, class } using the same terms found in the
 # English langauge game. For fitted modules, dict also includes { enabled, priority }.
@@ -244,7 +250,8 @@ def lookup(module, ship_map):
 
     # Shouldn't be listing player-specific paid stuff, other than Horizons
     elif module.get('sku') and module['sku'].lower() != 'elite_horizons_v_planetary_landings':
-        raise AssertionError('%s: Unexpected sku "%s"' % (module['id'], module['sku']))
+        # raise AssertionError('%s: Unexpected sku "%s"' % (module['id'], module['sku']))
+        return None
 
     # Skip Horizons Planetary Approach Suite
     elif name[1] in ['planetapproachsuite']:
@@ -319,8 +326,19 @@ def lookup(module, ship_map):
     if 'on' in module and 'priority' in module:
         new['enabled'], new['priority'] = module['on'], module['priority']	# priority is zero-based
 
+    # Extra module data
+    key = (new['name'], 'ship' in new and companion.ship_map.get(name[0]) or None, new['class'], new['rating'])
+    if __debug__:
+        assert key in moduledata, key
+        m = moduledata.get(key, {})
+        if new['name'] == 'Frame Shift Drive':
+            assert 'mass' in m and 'optmass' in m and 'maxfuel' in m and 'fuelmul' in m and 'fuelpower' in m, m
+        else:
+            assert 'mass' in m, m
+    new.update(moduledata.get(key, {}))
+
     # check we've filled out mandatory fields
-    for thing in ['category', 'name', 'class', 'rating']:
+    for thing in ['category', 'name', 'class', 'rating']:	# Don't consider mass etc as mandatory
         if not new.get(thing): raise AssertionError('%s: failed to set %s' % (module['id'], thing))
     if new['category'] == 'hardpoint' and not new.get('mount'):
         raise AssertionError('%s: failed to set %s' % (module['id'], 'mount'))
